@@ -2,7 +2,13 @@ import { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useGameStore } from '../store/gameStore';
-import { AuthUser } from '../types';
+
+interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
 
 export const useAuth = () => {
   const { currentUser, setCurrentUser } = useGameStore();
