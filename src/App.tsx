@@ -3,6 +3,7 @@ import { useGameStore } from './store/gameStore';
 import { LoginPage } from './components/Auth/LoginPage';
 import { SignupPage } from './components/Auth/SignupPage';
 import { LobbyPage } from './components/Game/LobbyPage';
+import { WaitingRoom } from './components/Game/WaitingRoom';
 import { useState } from 'react';
 
 function App() {
@@ -17,6 +18,11 @@ function App() {
     ) : (
       <LoginPage onSwitchToSignup={() => setShowSignup(true)} />
     );
+  }
+
+  // In a game → show waiting room
+  if (gameCode) {
+    return <WaitingRoom />;
   }
 
   // Logged in → show lobby

@@ -55,42 +55,9 @@ export const LobbyPage = () => {
   };
 
   // If in a game, show waiting room
-  if (gameCode) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-2xl p-8 w-full max-w-md shadow-2xl text-center">
-          <h1 className="text-4xl font-bold text-white mb-2">KAWO 🎴</h1>
-          <p className="text-gray-400 mb-8">Waiting for players...</p>
-
-          {/* Game Code */}
-          <div className="bg-gray-700 rounded-xl p-6 mb-6">
-            <p className="text-gray-400 text-sm mb-2">Game Code</p>
-            <p className="text-4xl font-bold text-blue-400 tracking-widest">
-              {gameCode}
-            </p>
-            <button
-              onClick={() => navigator.clipboard.writeText(gameCode)}
-              className="mt-3 text-sm text-gray-400 hover:text-white transition"
-            >
-              📋 Copy Code
-            </button>
-          </div>
-
-          <p className="text-gray-400 text-sm mb-6">
-            Share this code with your friends to join!
-          </p>
-
-          {/* Leave Game */}
-          <button
-            onClick={() => setGameCode('')}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition"
-          >
-            Leave Game
-          </button>
-        </div>
-      </div>
-    );
-  }
+if (gameCode) {
+  return null;
+}
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
