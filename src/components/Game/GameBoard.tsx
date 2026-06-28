@@ -274,6 +274,7 @@ export const GameBoard = () => {
   }
 
   const isMyTurn = game.currentPlayer === myPosition;
+  const isHost = game.players[0]?.uid === currentUser?.uid;
   const hasWinningHand = checkWinningHand(myHand);
   const gameOver = game.status === 'gameOver';
   const roundOver = game.roundOver;
@@ -429,16 +430,68 @@ export const GameBoard = () => {
                 <h2 className="text-2xl font-bold text-white mb-2">Game Over!</h2>
                 <p className="text-blue-300 text-lg mb-1">Team 1: {game.scores.team1} pts</p>
                 <p className="text-red-300 text-lg mb-4">Team 2: {game.scores.team2} pts</p>
-                <p className="text-yellow-400 font-bold text-xl">
+                <p className="text-yellow-400 font-bold text-xl mb-6">
                   {game.scores.team1 >= 100 ? 'Team 1 Wins! 🎉' : 'Team 2 Wins! 🎉'}
                 </p>
+                <button
+                  onClick={async () => {
+                    await update(ref(db, `games/${gameCode}`), {
+                      scores: { team1: 0, team2: 0 },
+                      status: 'waiting',
+                      roundOver: false,
+                      hands: [[], [], [], []],
+                      updatedAt: Date.now(),
+                    });
+                    useGameStore.getState().setGameCode('');
+                    useGameStore.getState().setCurrentGame(null);
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition"
+                >
+                  Back to Lobby
+                </button>
               </>
             ) : (
               <>
                 <p className="text-3xl mb-2">🎴</p>
                 <h2 className="text-xl font-bold text-white mb-2">Round Over!</h2>
                 <p className="text-blue-300">Team 1: {game.scores.team1} pts</p>
-                <p className="text-red-300 mb-4">Team 2: {game.scores.team2} pts</p>
+                <p className="text-red-300 mb-6">Team 2: {game.scores.team2} pts</p>
+                {isHost && (
+                  <button
+                    onClick={async () => {
+                      roundOverRef.current = false;
+                      const newDealer = (game.dealer + 1) % 4;
+                      const ranks: Card['rank'][] = ['A', 'K', 'Q', 'J'];
+                      const suits: Card['suit'][] = ['♠', '♥', '♦', '♣'];
+                      const deck: Card[] = [];
+                      ranks.forEach((rank) => suits.forEach((suit) => deck.push({ rank, suit })));
+                      for (let i = deck.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [deck[i], deck[j]] = [deck[j], deck[i]];
+                      }
+                      const hands: Card[][] = [[], [], [], []];
+                      for (let i = 0; i < 4; i++) {
+                        for (let j = 0; j < 4; j++) {
+                          hands[i].push(deck[i * 4 + j]);
+                        }
+                      }
+                      await update(ref(db, `games/${gameCode}`), {
+                        hands,
+                        dealer: newDealer,
+                        currentPlayer: newDealer,
+                        roundOver: false,
+                        status: 'playing',
+                        updatedAt: Date.now(),
+                      });
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition"
+                  >
+                    🎴 Next Round
+                  </button>
+                )}
+                {!isHost && (
+                  <p className="text-gray-400 text-sm">Waiting for host to start next round...</p>
+                )}
               </>
             )}
           </div>
