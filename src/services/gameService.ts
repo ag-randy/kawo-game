@@ -151,8 +151,37 @@ export const subscribeToGame = (
 };
 
 // ========================
-// START GAME
+// PICK TEAMMATE
 // ========================
+export const pickTeammate = async (
+  gameId: string,
+  teammateUid: string
+): Promise<void> => {
+  const gameRef = ref(db, `games/${gameId}`);
+  const snapshot = await get(gameRef);
+  const game: Game = snapshot.val();
+
+  // Host is position 0 (team 1)
+  // Teammate goes to position 2 (team 1)
+  // Others go to positions 1 and 3 (team 2)
+  const host = game.players[0];
+  const others = game.players.filter((p) => p.uid !== host.uid);
+  const teammate = others.find((p) => p.uid === teammateUid)!;
+  const opponents = others.filter((p) => p.uid !== teammateUid);
+
+  const updatedPlayers: GamePlayer[] = [
+    { ...host, position: 0, team: 1 },
+    { ...opponents[0], position: 1, team: 2 },
+    { ...teammate, position: 2, team: 1 },
+    { ...opponents[1], position: 3, team: 2 },
+  ];
+
+  await update(gameRef, {
+    players: updatedPlayers,
+    status: 'teamsSelected',
+    updatedAt: Date.now(),
+  });
+};
 export const startGame = async (gameId: string): Promise<void> => {
   const gameRef = ref(db, `games/${gameId}`);
   const snapshot = await get(gameRef);
