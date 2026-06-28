@@ -159,7 +159,7 @@ export const pickTeammate = async (
 ): Promise<void> => {
   const gameRef = ref(db, `games/${gameId}`);
   const snapshot = await get(gameRef);
-  const _game: Game = snapshot.val();
+  const game: Game = snapshot.val();
 
   // Host is position 0 (team 1)
   // Teammate goes to position 2 (team 1)
@@ -184,8 +184,6 @@ export const pickTeammate = async (
 };
 export const startGame = async (gameId: string): Promise<void> => {
   const gameRef = ref(db, `games/${gameId}`);
-  const snapshot = await get(gameRef);
-  const game: Game = snapshot.val();
 
   // Create and shuffle deck
   const ranks: Card['rank'][] = ['A', 'K', 'Q', 'J'];

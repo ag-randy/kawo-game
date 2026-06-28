@@ -298,6 +298,7 @@ export const GameBoard = () => {
   }
 
   const isMyTurn = game.currentPlayer === myPosition;
+  const isHost = game.players[0]?.uid === currentUser?.uid;
   const hasWinningHand = checkWinningHand(myHand);
   const gameOver = game.status === 'gameOver';
   const roundOver = game.roundOver;
