@@ -8,7 +8,6 @@ export const LobbyPage = () => {
   const [joinCode, setJoinCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [createdCode, setCreatedCode] = useState('');
 
   const handleCreateGame = async () => {
     if (!currentUser) return;
@@ -17,7 +16,6 @@ export const LobbyPage = () => {
 
     try {
       const code = await createGame(currentUser.uid, currentUser.displayName || 'Player');
-      setCreatedCode(code);
       setGameCode(code);
     } catch {
       setError('Failed to create game. Try again.');

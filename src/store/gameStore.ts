@@ -1,10 +1,5 @@
 import { create } from 'zustand';
 
-interface Card {
-  rank: 'A' | 'K' | 'Q' | 'J';
-  suit: '♠' | '♥' | '♦' | '♣';
-}
-
 interface AuthUser {
   uid: string;
   email: string | null;

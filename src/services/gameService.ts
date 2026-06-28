@@ -159,7 +159,7 @@ export const pickTeammate = async (
 ): Promise<void> => {
   const gameRef = ref(db, `games/${gameId}`);
   const snapshot = await get(gameRef);
-  const game: Game = snapshot.val();
+  const _game: Game = snapshot.val();
 
   // Host is position 0 (team 1)
   // Teammate goes to position 2 (team 1)

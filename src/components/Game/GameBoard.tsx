@@ -70,10 +70,6 @@ export const GameBoard = () => {
   const myPosition = game?.players.findIndex((p) => p.uid === currentUser?.uid) ?? 0;
 
   // Rotate view so current player is always at bottom
-  const getRotatedPosition = (absolutePosition: number) => {
-    return (absolutePosition - myPosition + 4) % 4;
-  };
-
   // Get player at rotated position
   const getPlayerAtView = (viewPosition: number) => {
     const absolutePosition = (viewPosition + myPosition) % 4;
