@@ -104,6 +104,7 @@ export const GameBoard = () => {
       if (snapshot.exists()) {
         const gameData = snapshot.val();
         setGame(gameData);
+        useGameStore.getState().setCurrentGame(gameData);
 
         if (gameData.roundOver || gameData.status !== 'playing') return;
 
@@ -298,7 +299,6 @@ export const GameBoard = () => {
   }
 
   const isMyTurn = game.currentPlayer === myPosition;
-  const isHost = game.players[0]?.uid === currentUser?.uid;
   const hasWinningHand = checkWinningHand(myHand);
   const gameOver = game.status === 'gameOver';
   const roundOver = game.roundOver;
@@ -457,19 +457,28 @@ export const GameBoard = () => {
                 <p className="text-yellow-400 font-bold text-xl mb-6">
                   {game.scores.team1 >= 100 ? 'Team 1 Wins! 🎉' : 'Team 2 Wins! 🎉'}
                 </p>
+                {isHost ? (
+                  <button
+                    onClick={async () => {
+                      await update(ref(db, `games/${gameCode}`), {
+                        scores: { team1: 0, team2: 0 },
+                        status: 'teamsSelected',
+                        roundOver: false,
+                        hands: [[], [], [], []],
+                        updatedAt: Date.now(),
+                      });
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition mb-3"
+                  >
+                    🎮 Play Again
+                  </button>
+                ) : (
+                  <p className="text-gray-400 text-sm mb-3">Waiting for host to restart...</p>
+                )}
                 <button
-                  onClick={async () => {
-                    // Clear store FIRST to unmount GameBoard immediately
+                  onClick={() => {
                     useGameStore.getState().setGameCode('');
                     useGameStore.getState().setCurrentGame(null);
-                    // Then clean up Firebase
-                    await update(ref(db, `games/${gameCode}`), {
-                      scores: { team1: 0, team2: 0 },
-                      status: 'waiting',
-                      roundOver: false,
-                      hands: [[], [], [], []],
-                      updatedAt: Date.now(),
-                    });
                   }}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition"
                 >
@@ -482,7 +491,7 @@ export const GameBoard = () => {
                 <h2 className="text-xl font-bold text-white mb-2">Round Over!</h2>
                 <p className="text-blue-300">Team 1: {game.scores.team1} pts</p>
                 <p className="text-red-300 mb-6">Team 2: {game.scores.team2} pts</p>
-                {isHost && (
+                {isHost ? (
                   <button
                     onClick={async () => {
                       roundOverRef.current = false;
@@ -510,14 +519,22 @@ export const GameBoard = () => {
                         updatedAt: Date.now(),
                       });
                     }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition mb-3"
                   >
                     🎴 Next Round
                   </button>
+                ) : (
+                  <p className="text-gray-400 text-sm mb-3">Waiting for host to start next round...</p>
                 )}
-                {!isHost && (
-                  <p className="text-gray-400 text-sm">Waiting for host to start next round...</p>
-                )}
+                <button
+                  onClick={() => {
+                    useGameStore.getState().setGameCode('');
+                    useGameStore.getState().setCurrentGame(null);
+                  }}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition"
+                >
+                  Leave Game
+                </button>
               </>
             )}
           </div>

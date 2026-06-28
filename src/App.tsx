@@ -26,8 +26,8 @@ function App() {
     return <GameBoard />;
   }
 
-  // In a game → show waiting room
-  if (gameCode) {
+  // In a game → show waiting room (waiting, teamsSelected)
+  if (gameCode && (currentGame?.status === 'waiting' || currentGame?.status === 'teamsSelected')) {
     return <WaitingRoom />;
   }
 
