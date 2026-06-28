@@ -109,13 +109,41 @@ export const GameBoard = () => {
         const gameData = snapshot.val();
         setGame(gameData);
 
-        // Start human timer when it's my turn
-        if (
-          gameData.currentPlayer === myPosition &&
-          !gameData.roundOver &&
-          gameData.status === 'playing'
-        ) {
+        if (gameData.roundOver || gameData.status !== 'playing') return;
+
+        const currentP = gameData.currentPlayer;
+
+        if (currentP === myPosition) {
+          // My turn - start my timer
           startHumanTimer();
+        } else {
+          // Someone else's turn - auto-pass for them after 3 seconds
+          clearAllTimers();
+          aiTimeoutRef.current = setTimeout(async () => {
+            if (roundOverRef.current) return;
+
+            const hands = gameData.hands;
+            if (!hands[currentP] || hands[currentP].length === 0) return;
+
+            const newHands = hands.map((h: Card[]) => [...h]);
+            const randomIdx = Math.floor(Math.random() * newHands[currentP].length);
+            const cardToPass = newHands[currentP][randomIdx];
+            newHands[currentP].splice(randomIdx, 1);
+
+            const nextPlayer = (currentP + 1) % 4;
+            newHands[nextPlayer].push(cardToPass);
+
+            await update(ref(db, `games/${gameCode}`), {
+              hands: newHands,
+              currentPlayer: nextPlayer,
+              updatedAt: Date.now(),
+            });
+
+            setGameLog((prev) => [
+              ...prev,
+              `Player ${currentP + 1} passed a card`,
+            ]);
+          }, 3000);
         }
       }
     });
@@ -274,7 +302,6 @@ export const GameBoard = () => {
   }
 
   const isMyTurn = game.currentPlayer === myPosition;
-  const isHost = game.players[0]?.uid === currentUser?.uid;
   const hasWinningHand = checkWinningHand(myHand);
   const gameOver = game.status === 'gameOver';
   const roundOver = game.roundOver;
@@ -435,6 +462,10 @@ export const GameBoard = () => {
                 </p>
                 <button
                   onClick={async () => {
+                    // Clear store FIRST to unmount GameBoard immediately
+                    useGameStore.getState().setGameCode('');
+                    useGameStore.getState().setCurrentGame(null);
+                    // Then clean up Firebase
                     await update(ref(db, `games/${gameCode}`), {
                       scores: { team1: 0, team2: 0 },
                       status: 'waiting',
@@ -442,8 +473,6 @@ export const GameBoard = () => {
                       hands: [[], [], [], []],
                       updatedAt: Date.now(),
                     });
-                    useGameStore.getState().setGameCode('');
-                    useGameStore.getState().setCurrentGame(null);
                   }}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition"
                 >
