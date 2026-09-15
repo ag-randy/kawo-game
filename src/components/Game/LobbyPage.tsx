@@ -4,7 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import { logout } from '../../services/authService';
 
 export const LobbyPage = () => {
-  const { currentUser, setGameCode, gameCode } = useGameStore();
+  const { currentUser, setGameCode } = useGameStore();
   const [joinCode, setJoinCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
