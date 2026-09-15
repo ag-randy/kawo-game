@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { ref, update, onValue, off } from 'firebase/database';
 import { db } from '../../config/firebase';
 import { useGameStore } from '../../store/gameStore';
+import { leaveGame } from '../../services/gameService';
 
 // ========================
 // TYPES
@@ -68,6 +69,7 @@ export const GameBoard = () => {
 
   // Get current player's position
   const myPosition = game?.players.findIndex((p) => p.uid === currentUser?.uid) ?? 0;
+const isHost = game?.players[0]?.uid === currentUser?.uid;
 
   // Rotate view so current player is always at bottom
   // Get player at rotated position
@@ -298,6 +300,14 @@ export const GameBoard = () => {
     );
   }
 
+    // Leave game mid-play
+  const handleLeaveGame = async () => {
+    if (!gameCode || !currentUser) return;
+    await leaveGame(gameCode, currentUser.uid);
+    useGameStore.getState().setGameCode('');
+    useGameStore.getState().setCurrentGame(null);
+  };
+
   const isMyTurn = game.currentPlayer === myPosition;
   const hasWinningHand = checkWinningHand(myHand);
   const gameOver = game.status === 'gameOver';
@@ -318,6 +328,12 @@ export const GameBoard = () => {
           <p className="text-blue-300 text-xs">Team 1</p>
           <p className="text-white text-2xl font-bold">{game.scores.team1}</p>
         </div>
+        <button
+          onClick={handleLeaveGame}
+          className="self-end text-gray-400 hover:text-red-400 text-xs mb-4 transition"
+        >
+          🚪 Leave Game
+        </button>
         <div className="text-center">
           <p className="text-white text-sm font-bold">KAWO 🎴</p>
           <p className="text-gray-300 text-xs">First to 100</p>

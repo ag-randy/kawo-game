@@ -8,6 +8,7 @@ interface LoginPageProps {
 export const LoginPage = ({ onSwitchToSignup }: LoginPageProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -64,14 +65,24 @@ export const LoginPage = ({ onSwitchToSignup }: LoginPageProps) => {
             required
             className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+              tabIndex={-1}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
           <button
             type="submit"
             disabled={isLoading}

@@ -218,3 +218,25 @@ export const startGame = async (gameId: string): Promise<void> => {
     updatedAt: Date.now(),
   });
 };
+
+// ========================
+// LEAVE GAME
+// ========================
+export const leaveGame = async (
+  gameId: string,
+  uid: string
+): Promise<void> => {
+  const gameRef = ref(db, `games/${gameId}`);
+  const snapshot = await get(gameRef);
+  if (!snapshot.exists()) return;
+
+  const game: Game = snapshot.val();
+  const updatedPlayers = game.players.map((p) =>
+    p.uid === uid ? { ...p, isConnected: false } : p
+  );
+
+  await update(gameRef, {
+    players: updatedPlayers,
+    updatedAt: Date.now(),
+  });
+};

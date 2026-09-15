@@ -25,15 +25,14 @@ function App() {
   // (GameBoard handles its own Round Over / Game Over modals internally)
   if (
     gameCode &&
-    (currentGame?.status === 'playing' ||
-      currentGame?.status === 'roundOver' ||
-      currentGame?.status === 'gameOver')
+    currentGame &&
+    ['playing', 'roundOver', 'gameOver'].includes(currentGame.status)
   ) {
     return <GameBoard />;
   }
-  
-  // In a game → show waiting room (waiting, teamsSelected)
-  if (gameCode && (currentGame?.status === 'waiting' || currentGame?.status === 'teamsSelected')) {
+
+  // In a game (waiting, teamsSelected, or currentGame not yet loaded) → waiting room
+  if (gameCode) {
     return <WaitingRoom />;
   }
 
