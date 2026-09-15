@@ -21,11 +21,17 @@ function App() {
     );
   }
 
-  // Game is playing → show game board
-  if (gameCode && currentGame?.status === 'playing') {
+  // Game is playing, round just ended, or game just ended → show game board
+  // (GameBoard handles its own Round Over / Game Over modals internally)
+  if (
+    gameCode &&
+    (currentGame?.status === 'playing' ||
+      currentGame?.status === 'roundOver' ||
+      currentGame?.status === 'gameOver')
+  ) {
     return <GameBoard />;
   }
-
+  
   // In a game → show waiting room (waiting, teamsSelected)
   if (gameCode && (currentGame?.status === 'waiting' || currentGame?.status === 'teamsSelected')) {
     return <WaitingRoom />;

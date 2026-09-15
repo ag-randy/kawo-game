@@ -52,10 +52,6 @@ export const LobbyPage = () => {
     await logout();
   };
 
-  // If in a game, show waiting room
-if (gameCode) {
-  return null;
-}
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
