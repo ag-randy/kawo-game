@@ -30,6 +30,14 @@ interface Game {
   roundOver: boolean;
 }
 
+type KawoTarget = 'partner' | 'oppLeft' | 'oppRight';
+type DoubleTarget =
+  | 'me-partner'
+  | 'me-oppLeft'
+  | 'me-oppRight'
+  | 'partner-oppLeft'
+  | 'partner-oppRight';
+
 // ========================
 // CARD COMPONENT
 // ========================
@@ -69,7 +77,33 @@ export const GameBoard = () => {
 
   // Get current player's position
   const myPosition = game?.players.findIndex((p) => p.uid === currentUser?.uid) ?? 0;
-const isHost = game?.players[0]?.uid === currentUser?.uid;
+  const isHost = game?.players[0]?.uid === currentUser?.uid;
+
+  // Positions relative to me (clockwise: 0→1→2→3→0)
+  const partnerPosition = (myPosition + 2) % 4;
+  const oppLeftPosition = (myPosition + 1) % 4;
+  const oppRightPosition = (myPosition + 3) % 4;
+
+  const getKawoTargetPosition = (target: KawoTarget) => {
+    if (target === 'partner') return partnerPosition;
+    if (target === 'oppLeft') return oppLeftPosition;
+    return oppRightPosition;
+  };
+
+  const getDoubleTargetPositions = (target: DoubleTarget): [number, number] => {
+    switch (target) {
+      case 'me-partner':
+        return [myPosition, partnerPosition];
+      case 'me-oppLeft':
+        return [myPosition, oppLeftPosition];
+      case 'me-oppRight':
+        return [myPosition, oppRightPosition];
+      case 'partner-oppLeft':
+        return [partnerPosition, oppLeftPosition];
+      case 'partner-oppRight':
+        return [partnerPosition, oppRightPosition];
+    }
+  };
 
   // Rotate view so current player is always at bottom
   // Get player at rotated position
@@ -200,8 +234,6 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
     const nextPlayer = getNextPlayer(myPosition);
     newHands[nextPlayer].push(cardToPass);
 
-    const nextIsHuman = nextPlayer === myPosition;
-
     await update(ref(db, `games/${gameCode}`), {
       hands: newHands,
       currentPlayer: nextPlayer,
@@ -212,24 +244,19 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
       ...prev,
       `You passed ${cardToPass.rank}${cardToPass.suit}`,
     ]);
-
-    if (!nextIsHuman) {
-      // AI plays after 3 seconds (handled by other players' clients)
-    }
   };
 
-  // Handle Kawo call
-  const handleKawoCall = async (type: 'kawo' | 'double' | 'full') => {
+  // Handle Kawo call (targeted)
+  const handleKawoCall = async (
+    type: 'kawo' | 'double' | 'full',
+    target?: KawoTarget | DoubleTarget
+  ) => {
     if (!game || !gameCode || roundOverRef.current) return;
 
     clearAllTimers();
     roundOverRef.current = true;
 
     const myTeam = game.players[myPosition]?.team;
-    const partnerPosition = game.players.findIndex(
-      (p) => p.team === myTeam && p.position !== myPosition
-    );
-    const partnerHand = game.hands[partnerPosition];
     const myTeamKey = myTeam === 1 ? 'team1' : 'team2';
     const opponentTeamKey = myTeam === 1 ? 'team2' : 'team1';
 
@@ -237,37 +264,41 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
     let toTeam = myTeamKey;
     let message = '';
 
-    if (type === 'kawo') {
-      if (checkWinningHand(partnerHand)) {
-        pointsAwarded = 10;
+    if (type === 'kawo' && target) {
+      pointsAwarded = 10;
+      const targetPosition = getKawoTargetPosition(target as KawoTarget);
+      const targetPlayer = game.players[targetPosition];
+      if (checkWinningHand(game.hands[targetPosition])) {
         toTeam = myTeamKey;
-        message = `KAWO! ${game.players[myPosition]?.username} called it! Team ${myTeam} scores 10 pts!`;
+        message = `KAWO! ${game.players[myPosition]?.username} correctly called ${targetPlayer?.username}'s hand! Team ${myTeam} scores 10 pts!`;
       } else {
-        pointsAwarded = 10;
         toTeam = opponentTeamKey;
-        message = `False KAWO! Opponents score 10 pts!`;
+        message = `False KAWO on ${targetPlayer?.username}! Opponents score 10 pts!`;
       }
-    } else if (type === 'double') {
-      if (checkWinningHand(myHand) && checkWinningHand(partnerHand)) {
-        pointsAwarded = 20;
+    } else if (type === 'double' && target) {
+      pointsAwarded = 20;
+      const [posA, posB] = getDoubleTargetPositions(target as DoubleTarget);
+      if (checkWinningHand(game.hands[posA]) && checkWinningHand(game.hands[posB])) {
         toTeam = myTeamKey;
         message = `DOUBLE KAWO! Team ${myTeam} scores 20 pts!`;
       } else {
-        pointsAwarded = 20;
         toTeam = opponentTeamKey;
         message = `False DOUBLE KAWO! Opponents score 20 pts!`;
       }
     } else if (type === 'full') {
+      pointsAwarded = 40;
       const allWinning = game.hands.every((h) => checkWinningHand(h));
       if (allWinning) {
-        pointsAwarded = 40;
         toTeam = myTeamKey;
         message = `FULL KAWO! Team ${myTeam} scores 40 pts!`;
       } else {
-        pointsAwarded = 40;
         toTeam = opponentTeamKey;
         message = `False FULL KAWO! Opponents score 40 pts!`;
       }
+    } else {
+      // Missing target for kawo/double — abort without locking the round
+      roundOverRef.current = false;
+      return;
     }
 
     const newScores = { ...game.scores };
@@ -292,6 +323,14 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
     setGameLog((prev) => [...prev, '🚨 You signaled your partner!']);
   };
 
+  // Leave game mid-play
+  const handleLeaveGame = async () => {
+    if (!gameCode || !currentUser) return;
+    await leaveGame(gameCode, currentUser.uid);
+    useGameStore.getState().setGameCode('');
+    useGameStore.getState().setCurrentGame(null);
+  };
+
   if (!game) {
     return (
       <div className="min-h-screen bg-green-900 flex items-center justify-center">
@@ -299,14 +338,6 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
       </div>
     );
   }
-
-    // Leave game mid-play
-  const handleLeaveGame = async () => {
-    if (!gameCode || !currentUser) return;
-    await leaveGame(gameCode, currentUser.uid);
-    useGameStore.getState().setGameCode('');
-    useGameStore.getState().setCurrentGame(null);
-  };
 
   const isMyTurn = game.currentPlayer === myPosition;
   const hasWinningHand = checkWinningHand(myHand);
@@ -330,7 +361,7 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
         </div>
         <button
           onClick={handleLeaveGame}
-          className="self-end text-gray-400 hover:text-red-400 text-xs mb-4 transition"
+          className="text-gray-400 hover:text-red-400 text-xs transition"
         >
           🚪 Leave Game
         </button>
@@ -345,15 +376,31 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
       </div>
 
       {/* Top Player (Partner) */}
-      <div className="flex flex-col items-center mb-4">
+      <div className="flex flex-col items-center mb-2">
         <p className="text-white text-sm font-bold mb-1">
-          {topPlayer?.username || 'Partner'} 
+          {topPlayer?.username || 'Partner'}
           <span className="text-blue-300 text-xs ml-1">(Partner)</span>
         </p>
-        <div className="flex gap-1">
+        <div className="flex gap-1 mb-2">
           {topHand.map((_, idx) => (
             <CardBack key={idx} small />
           ))}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleKawoCall('kawo', 'partner')}
+            disabled={roundOver}
+            className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs"
+          >
+            KAWO
+          </button>
+          <button
+            onClick={() => handleKawoCall('double', 'me-partner')}
+            disabled={roundOver}
+            className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs"
+          >
+            DOUBLE
+          </button>
         </div>
       </div>
 
@@ -361,41 +408,38 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
       <div className="flex flex-1 items-center justify-between mb-4">
         {/* Left Player (Opponent) */}
         <div className="flex flex-col items-center">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 mb-2">
             {leftHand.map((_, idx) => (
               <CardBack key={idx} small />
             ))}
           </div>
-          <p className="text-white text-xs mt-1">
+          <p className="text-white text-xs mb-2">
             {leftPlayer?.username || 'Opponent'}
           </p>
+          <button
+            onClick={() => handleKawoCall('kawo', 'oppLeft')}
+            disabled={roundOver}
+            className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs mb-1"
+          >
+            KAWO
+          </button>
+          <button
+            onClick={() => handleKawoCall('double', 'me-oppLeft')}
+            disabled={roundOver}
+            className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs"
+          >
+            DOUBLE
+          </button>
         </div>
 
-        {/* Center - Buttons */}
+        {/* Center - Signal + Full (mine) */}
         <div className="flex flex-col gap-2 items-center">
-          {/* Signal Partner */}
           <button
             onClick={signalPartner}
             disabled={roundOver || !hasWinningHand}
             className="bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white font-bold py-2 px-3 rounded-lg transition text-xs"
           >
             👋 Signal
-          </button>
-
-          {/* Kawo Buttons */}
-          <button
-            onClick={() => handleKawoCall('kawo')}
-            disabled={roundOver}
-            className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-white font-bold py-2 px-3 rounded-lg transition text-xs"
-          >
-            KAWO!
-          </button>
-          <button
-            onClick={() => handleKawoCall('double')}
-            disabled={roundOver}
-            className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white font-bold py-2 px-3 rounded-lg transition text-xs"
-          >
-            DOUBLE!
           </button>
           <button
             onClick={() => handleKawoCall('full')}
@@ -408,14 +452,28 @@ const isHost = game?.players[0]?.uid === currentUser?.uid;
 
         {/* Right Player (Opponent) */}
         <div className="flex flex-col items-center">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 mb-2">
             {rightHand.map((_, idx) => (
               <CardBack key={idx} small />
             ))}
           </div>
-          <p className="text-white text-xs mt-1">
+          <p className="text-white text-xs mb-2">
             {rightPlayer?.username || 'Opponent'}
           </p>
+          <button
+            onClick={() => handleKawoCall('kawo', 'oppRight')}
+            disabled={roundOver}
+            className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs mb-1"
+          >
+            KAWO
+          </button>
+          <button
+            onClick={() => handleKawoCall('double', 'me-oppRight')}
+            disabled={roundOver}
+            className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg transition text-xs"
+          >
+            DOUBLE
+          </button>
         </div>
       </div>
 
